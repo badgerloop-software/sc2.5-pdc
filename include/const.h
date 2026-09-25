@@ -73,11 +73,16 @@ extern volatile PDCStates pdcState;
 
 #define REGEN_BRAKE_LIGHT_THRESHOLD 0.05f // 5% regen turns brake lights on
 
-// Stable IO samples (IO_UPDATE_PERIOD = 50 ms) before brake state changes.
-#define BRAKE_DEBOUNCE_PRESS_SAMPLES 3   // ~150 ms to assert
-#define BRAKE_DEBOUNCE_RELEASE_SAMPLES 2 // ~100 ms to release
-
 #define BRAKE_ADC_CHANNEL ADC_CHANNEL_5 // PA0 (ADC1_IN5 on STM32L432)
-#define BRAKE_PRESSURE_THRESHOLD_V 1.65f
+#define BRAKE_ADC_REFERENCE_VOLTAGE 3.3f
+#define BRAKE_SENSOR_MIN_OUTPUT_VOLTAGE 0.5f
+#define BRAKE_SENSOR_MAX_OUTPUT_VOLTAGE 4.5f
+#define BRAKE_SENSOR_MAX_PRESSURE_PSI 2000.0f
+#define BRAKE_SENSOR_DIVIDER_RATIO                                           \
+  (BRAKE_ADC_REFERENCE_VOLTAGE / BRAKE_SENSOR_MAX_OUTPUT_VOLTAGE)
+
+// Separate thresholds prevent brake state chatter near the activation point
+#define BRAKE_PRESSURE_ON_THRESHOLD_PSI 100.0f
+#define BRAKE_PRESSURE_OFF_THRESHOLD_PSI 75.0f
 
 #endif

@@ -2,7 +2,7 @@
 #define __IO_MANAGER_H__
 
 #include <Arduino.h>
-#include "PID.h"
+#include "pid.h"
 #include "STM32TimerInterrupt_Generic.h"
 #include "adc.h"
 #include "const.h"
@@ -23,7 +23,7 @@ struct Digital_Data {
   bool eco_mode : 1;     // output
   bool mcu_mc_on : 1;    // input (physical motor controller key switch)
   bool park_brake : 1;   // input (sourced from CAN when test board is used)
-  bool brake_led : 1;    // output (pedal brake or regen >= threshold)
+  bool brake_led : 1;    // output (brake pressure or regen >= threshold)
 };
 
 extern volatile Digital_Data digital_data;

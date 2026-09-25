@@ -80,7 +80,8 @@ void CANPDC::sendPDCData() {
   this->sendMessage(0x203, (void *)&lv_5V_telem, sizeof(float));
   this->sendMessage(0x204, (void *)&lv_5V_current, sizeof(float));
   this->sendMessage(0x205, (void *)&current_in_telem, sizeof(float));
-  this->sendMessage(0x206, (void *)&brake_pressure_telem, sizeof(float));
+  this->sendMessage(0x206, (void *)&brake_pressure_telem,
+                    sizeof(float)); // Brake pressure in PSI
   this->sendMessage(0x207, (void *)&digital_data, sizeof(digital_data));
   this->sendMessage(0x208, (void *)&mph, sizeof(float));
   // 0x209/0x302 are INPUTs received from the pedal/test board — do not
