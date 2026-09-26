@@ -54,10 +54,10 @@ Receive from the steering wheel:
 Transmit:
 
 - `0x200` through `0x208`: accel out, regen, LV telem, brake, digital pack, mph
-- `0x206`: brake pressure in PSI as little-endian float32, clamped to 0–2000
+- `0x206`: brake pressure in PSI as little-endian float32, clamped to 0–200
 - `0x207` bit 5: brake-light Boolean
 
-The brake pressure sensor outputs 0.5–4.5 V for 0–2000 PSI. The external
+The brake pressure sensor outputs 0.5–4.5 V for 0–200 PSI. The external
 voltage divider maps 4.5 V from the sensor to 3.3 V at PA0. Brake pressure at
 or above 100 PSI asserts the brake input and pressure at or below 75 PSI
 releases it. The brake light is on while that input is asserted or requested
