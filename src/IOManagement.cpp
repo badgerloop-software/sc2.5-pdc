@@ -132,8 +132,9 @@ void readIO() {
     brake_pressed = true;
   }
 
-  digital_data.brake_led =
-      brake_pressed || (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
+  // digital_data.brake_led =
+  //     brake_pressed || (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
+  digital_data.brake_led = (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
 #endif
 }
 

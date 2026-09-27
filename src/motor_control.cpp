@@ -75,8 +75,8 @@ void transition() {
     writeRegenBrake(0.0);
   }
 
-  if (brake_pressed) {
-    writeAccOut(0.0);
-    writeRegenBrake(0.0);
-  }
+  // if (brake_pressed) {
+  //   writeAccOut(0.0);
+  //   writeRegenBrake(0.0);
+  // }
 }
