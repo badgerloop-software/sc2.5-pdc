@@ -41,6 +41,7 @@ extern volatile bool brake_pressed;
 extern volatile float brake_pressure_telem;
 extern volatile float mph;
 extern volatile float rpm;
+extern volatile float battery_soc;
 
 // initialize digital and analog pins
 void initIO();

@@ -15,6 +15,7 @@ volatile bool brake_pressed = false;
 volatile float brake_pressure_telem = 0.0f;
 volatile float mph = 0;
 volatile float rpm = 0;
+volatile float battery_soc = 0.0f;
 
 // Ticker to poll input readings at fixed rate
 STM32TimerInterrupt IOTimer(TIM7);
@@ -132,9 +133,8 @@ void readIO() {
     brake_pressed = true;
   }
 
-  // digital_data.brake_led =
-  //     brake_pressed || (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
-  digital_data.brake_led = (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
+  digital_data.brake_led =
+      brake_pressed || (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
 #endif
 }
 
@@ -162,6 +162,11 @@ void writeRegenBrake(float newRegenBrake) {
   // Clamp to valid DAC command range before converting to integer counts.
   if (newRegenBrake < 0.0f) newRegenBrake = 0.0f;
   else if (newRegenBrake > 1.0f) newRegenBrake = 1.0f;
+
+  // Check if battery SOC is above the threshold for regen braking. If it is, set regen_brake to 0.
+  if (battery_soc >= 0.95f) {
+    newRegenBrake = 0.0f;
+  }
 
   regen_brake = newRegenBrake;
   HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(regen_brake * 4095.0f));

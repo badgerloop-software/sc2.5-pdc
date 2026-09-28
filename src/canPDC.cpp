@@ -7,11 +7,63 @@ static uint8_t lastDriveMode = 0xFF;
 
 static constexpr uint16_t THROTTLE_SENT_MAX = 4095U;
 
+static inline uint16_t readBeUint16(const uint8_t *data) {
+    return (uint16_t)(((uint16_t)data[0] << 8) | data[1]);
+}
+
+// Battery SOC constants
+static const float CELL_VOLTAGE_SCALE_V = 0.0001f;
+
+// OCV curve: cell V at SOC 0,5,10,...,100 (matches streamlit app)
+static const float CELL_VOLTAGES[] = {
+    2.500f, 2.871f, 3.043f, 3.160f, 3.269f,
+    3.371f, 3.429f, 3.476f, 3.521f, 3.572f,
+    3.629f, 3.680f, 3.726f, 3.765f, 3.804f,
+    3.865f, 3.923f, 3.955f, 3.975f, 3.998f, 4.111f
+};
+static const int CELL_VOLTAGE_COUNT = sizeof(CELL_VOLTAGES) / sizeof(CELL_VOLTAGES[0]);
+static const float SERIES_COUNT = 29.0f;
+
+static float socFromPackVoltage(float pack_voltage) {
+    float cell_voltage = pack_voltage / SERIES_COUNT;
+
+    if (cell_voltage <= CELL_VOLTAGES[0]) {
+        return 0.0f;
+    }
+    if (cell_voltage >= CELL_VOLTAGES[CELL_VOLTAGE_COUNT - 1]) {
+        return 100.0f;
+    }
+
+    for (int i = 0; i < CELL_VOLTAGE_COUNT - 1; i++) {
+        float low_v = CELL_VOLTAGES[i];
+        float high_v = CELL_VOLTAGES[i + 1];
+        if (low_v <= cell_voltage && cell_voltage <= high_v) {
+            float fraction = (cell_voltage - low_v) / (high_v - low_v);
+            return (float)(i * 5) + fraction * 5.0f;
+        }
+    }
+
+    return 0.0f;
+}
+
 CANPDC::CANPDC(CAN_TypeDef *canPort, CAN_PINS pins, int frequency)
     : CANManager(canPort, pins, frequency) {};
 
 void CANPDC::readHandler(CAN_message_t msg) {
+
+  float local_high_cell_v = 0.0f;
+  float local_low_cell_v = 0.0f;
+  float local_est_pack_v = 0.0f;
+  
   switch (msg.id) {
+  case 0x109:{
+            // High/Low cell V (0.0001 V), Pack Abs Current (0x8000 midscale, 0.1 A)
+            local_high_cell_v = (float)readBeUint16(&msg.buf[0]) * CELL_VOLTAGE_SCALE_V;
+            local_low_cell_v = (float)readBeUint16(&msg.buf[2]) * CELL_VOLTAGE_SCALE_V;
+            local_est_pack_v = ((local_high_cell_v + local_low_cell_v) / 2.0f) * SERIES_COUNT;
+            battery_soc = socFromPackVoltage(local_est_pack_v);
+            break;
+  }
   case FORWARD_AND_REVERSE_ID: { // 0x300
     // Byte 0 bit layout per CAN spec:
     //   bit 0: headlight, bit 1: left_blink, bit 2: right_blink,
