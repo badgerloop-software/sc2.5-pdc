@@ -5,6 +5,14 @@
 #include "canPDC.h"
 
 volatile PDCStates pdcState = PDCStates::OFF;
+volatile bool cruise_active = false;
+volatile float cruise_target_mph = 0.0f;
+volatile bool cruise_inc_pending = false;
+volatile bool cruise_dec_pending = false;
+
+static bool previous_cruise_inc = false;
+static bool previous_cruise_dec = false;
+
 STM32TimerInterrupt state_updater(TIM2);
 
 void initPDCState() {
@@ -17,6 +25,11 @@ void initPDCState() {
 PDCStates get_state() { return pdcState; }
 
 void transition() {
+  const bool cruise_inc_rising = cruise_inc && !previous_cruise_inc;
+  const bool cruise_dec_rising = cruise_dec && !previous_cruise_dec;
+  previous_cruise_inc = cruise_inc;
+  previous_cruise_dec = cruise_dec;
+
   switch (pdcState) {
   case PDCStates::PARK:
     if (!digital_data.park_brake) {
@@ -68,6 +81,14 @@ void transition() {
   default:
     pdcState = PDCStates::PARK;
     break;
+  }
+
+  if (pdcState == PDCStates::FORWARD) {
+    cruise_inc_pending = cruise_inc_pending || cruise_inc_rising;
+    cruise_dec_pending = cruise_dec_pending || cruise_dec_rising;
+  } else {
+    cruise_inc_pending = false;
+    cruise_dec_pending = false;
   }
 
   if (digital_data.park_brake) {

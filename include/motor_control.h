@@ -11,4 +11,9 @@ void initPDCState();
 void transition();
 PDCStates get_state();
 
+extern volatile bool cruise_active;
+extern volatile float cruise_target_mph;
+extern volatile bool cruise_inc_pending;
+extern volatile bool cruise_dec_pending;
+
 #endif
