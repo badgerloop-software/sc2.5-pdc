@@ -18,5 +18,8 @@ public:
 };
 
 extern volatile bool forwardAndReverse;
+extern volatile bool cruise_main;
+extern volatile bool cruise_inc;
+extern volatile bool cruise_dec;
 
 #endif

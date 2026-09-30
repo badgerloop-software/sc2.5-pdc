@@ -2,6 +2,9 @@
 #include "const.h"
 
 volatile bool forwardAndReverse = false;
+volatile bool cruise_main = false;
+volatile bool cruise_inc = false;
+volatile bool cruise_dec = false;
 
 static uint8_t lastDriveMode = 0xFF;
 
@@ -15,10 +18,14 @@ void CANPDC::readHandler(CAN_message_t msg) {
   case FORWARD_AND_REVERSE_ID: { // 0x300
     // Byte 0 bit layout per CAN spec:
     //   bit 0: headlight, bit 1: left_blink, bit 2: right_blink,
-    //   bit 3: direction_switch, bit 4: horn
+    //   bit 3: direction_switch, bit 4: horn, bit 5: cruise main,
+    //   bit 6: cruise increase, bit 7: cruise decrease
     // bit 3 direction_switch: 1 = forward, 0 = reverse (steering wheel)
     bool forward_selected = ((msg.buf[0] >> 3) & 1) != 0;
     forwardAndReverse = forward_selected ? FORWARD_VALUE : REVERSE_VALUE;
+    cruise_main = ((msg.buf[0] >> 5) & 1) != 0;
+    cruise_inc = ((msg.buf[0] >> 6) & 1) != 0;
+    cruise_dec = ((msg.buf[0] >> 7) & 1) != 0;
     break;
   }
 
