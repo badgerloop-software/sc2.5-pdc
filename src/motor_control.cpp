@@ -12,7 +12,7 @@ volatile bool cruise_dec_pending = false;
 static bool previous_cruise_inc = false;
 static bool previous_cruise_dec = false;
 
-static constexpr float MAX_CRUISE_MPH = 15.0f;
+static constexpr float MAX_CRUISE_MPH = 45.0f;
 static PID cruise_pid(SPEED_P_PARAM, SPEED_I_PARAM, SPEED_D_PARAM,
             PID_UPDATE_INTERVAL);
 
