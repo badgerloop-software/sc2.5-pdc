@@ -9,11 +9,14 @@
 #define REGEN_BRAKE_INPUT_ID 0x301
 #define THROTTLE_INPUT_ID 0x302
 #define DRIVE_MODE_INPUT_ID 0x303
+// 0x210 payload: byte 0 = active (0/1), bytes 1-4 = target MPH (float).
+#define CRUISE_STATUS_OUTPUT_ID 0x210
 
 class CANPDC : public CANManager {
 public:
   CANPDC(CAN_TypeDef *canPort, CAN_PINS pins, int frequency = DEFAULT_CAN_FREQ);
   void readHandler(CAN_message_t msg);
+  // Sends the cruise active state and target MPH when either changes.
   void sendPDCData();
 };
 

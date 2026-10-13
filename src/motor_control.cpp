@@ -6,6 +6,7 @@
 
 volatile PDCStates pdcState = PDCStates::OFF;
 volatile float cruise_target_mph = 0.0f;
+volatile uint32_t cruise_status_update_version = 0;
 volatile bool cruise_inc_pending = false;
 volatile bool cruise_dec_pending = false;
 
@@ -13,6 +14,7 @@ static bool previous_cruise_inc = false;
 static bool previous_cruise_dec = false;
 
 static constexpr float MAX_CRUISE_MPH = 45.0f;
+static constexpr float CRUISE_DISENGAGE_INPUT_THRESHOLD = 0.01f;
 static PID cruise_pid(SPEED_P_PARAM, SPEED_I_PARAM, SPEED_D_PARAM,
             PID_UPDATE_INTERVAL);
 
@@ -42,6 +44,8 @@ void initPDCState() {
 PDCStates get_state() { return pdcState; }
 
 void transition() {
+  const PDCStates state_before_transition = pdcState;
+  const float cruise_target_before_transition = cruise_target_mph;
   const bool cruise_inc_rising = cruise_inc && !previous_cruise_inc;
   const bool cruise_dec_rising = cruise_dec && !previous_cruise_dec;
   previous_cruise_inc = cruise_inc;
@@ -94,9 +98,9 @@ void transition() {
     writeAccOut(acc_in);
     writeRegenBrake(regen_in);
 
-    // The hand accelerator is disabled while cruise control is active.
-    // TODO: Add `&& !brake_pressed` when the physical brake sensor is wired.
-    if (cruise_main && acc_in <= 0.01f /* && !brake_pressed */) {
+    if (cruise_main && !brake_pressed &&
+        acc_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD &&
+        regen_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD) {
       cruise_target_mph = clampCruiseTarget(mph);
       cruise_pid.setSetPoint(cruise_target_mph);
       cruise_pid.setMode(AUTO_MODE);
@@ -112,11 +116,9 @@ void transition() {
       writeRegenBrake(0.0);
       break;
     }
-
-    // The accelerator is intentionally ignored in this state. Cruise exits
-    // through crz_main before manual throttle is restored.
-    // TODO: Add `|| brake_pressed` when the physical brake sensor is wired.
-    if ((!cruise_main /* || brake_pressed */) ||
+    if (!cruise_main || brake_pressed ||
+      acc_in > CRUISE_DISENGAGE_INPUT_THRESHOLD ||
+      regen_in > CRUISE_DISENGAGE_INPUT_THRESHOLD ||
       forwardAndReverse != FORWARD_VALUE) {
       cruise_pid.setMode(MANUAL_MODE);
       cruise_inc_pending = false;
@@ -148,6 +150,14 @@ void transition() {
   default:
     pdcState = PDCStates::PARK;
     break;
+  }
+
+  const bool cruise_active_state_changed =
+      (state_before_transition == PDCStates::CRUISE) !=
+      (pdcState == PDCStates::CRUISE);
+  if (cruise_active_state_changed ||
+      cruise_target_mph != cruise_target_before_transition) {
+    ++cruise_status_update_version;
   }
 
   if ((pdcState == PDCStates::FORWARD || pdcState == PDCStates::CRUISE) &&
