@@ -111,7 +111,6 @@ void transition() {
     writeRegenBrake(regen_in);
 
     if (cruise_main && !cruise_brake_cancelled && !brake_pressed && mph >= MIN_CRUISE_SPEED_MPH &&
-        acc_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD &&
         regen_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD) {
       cruise_target_mph = clampCruiseTarget(mph);
       cruise_pid.setSetPoint(cruise_target_mph);
@@ -129,7 +128,6 @@ void transition() {
       break;
     }
     if (!cruise_main || brake_pressed ||
-      acc_in > CRUISE_DISENGAGE_INPUT_THRESHOLD ||
       regen_in > CRUISE_DISENGAGE_INPUT_THRESHOLD ||
       forwardAndReverse != FORWARD_VALUE) {
       cruise_pid.setMode(MANUAL_MODE);
