@@ -12,6 +12,10 @@ volatile bool cruise_dec_pending = false;
 
 static bool previous_cruise_inc = false;
 static bool previous_cruise_dec = false;
+// A brake cancellation must be explicitly re-armed by switching cruise-main
+// off.  This prevents a held cruise-main signal from re-engaging cruise as
+// soon as the brake pedal is released.
+static bool cruise_brake_cancelled = false;
 
 static constexpr float MAX_CRUISE_MPH = 45.0f;
 static constexpr float CRUISE_DISENGAGE_INPUT_THRESHOLD = 0.01f;
@@ -50,6 +54,13 @@ void transition() {
   const bool cruise_dec_rising = cruise_dec && !previous_cruise_dec;
   previous_cruise_inc = cruise_inc;
   previous_cruise_dec = cruise_dec;
+
+  if (pdcState == PDCStates::CRUISE && brake_pressed) {
+    cruise_brake_cancelled = true;
+  }
+  if (!cruise_main) {
+    cruise_brake_cancelled = false;
+  }
 
   switch (pdcState) {
   case PDCStates::PARK:
@@ -98,7 +109,7 @@ void transition() {
     writeAccOut(acc_in);
     writeRegenBrake(regen_in);
 
-    if (cruise_main && !brake_pressed &&
+    if (cruise_main && !cruise_brake_cancelled && !brake_pressed &&
         acc_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD &&
         regen_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD) {
       cruise_target_mph = clampCruiseTarget(mph);
