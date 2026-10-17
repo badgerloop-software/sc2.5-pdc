@@ -58,6 +58,7 @@ enum class PDCStates : uint8_t {
   IDLE,
   FORWARD,
   REVERSE,
+  CRUISE,
 };
 
 extern volatile PDCStates pdcState;

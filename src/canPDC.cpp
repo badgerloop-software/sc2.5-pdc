@@ -1,7 +1,11 @@
 #include "canPDC.h"
 #include "const.h"
+#include "motor_control.h"
 
 volatile bool forwardAndReverse = false;
+volatile bool cruise_main = false;
+volatile bool cruise_inc = false;
+volatile bool cruise_dec = false;
 
 static uint8_t lastDriveMode = 0xFF;
 
@@ -15,10 +19,14 @@ void CANPDC::readHandler(CAN_message_t msg) {
   case FORWARD_AND_REVERSE_ID: { // 0x300
     // Byte 0 bit layout per CAN spec:
     //   bit 0: headlight, bit 1: left_blink, bit 2: right_blink,
-    //   bit 3: direction_switch, bit 4: horn
+    //   bit 3: direction_switch, bit 4: horn, bit 5: cruise main,
+    //   bit 6: cruise increase, bit 7: cruise decrease
     // bit 3 direction_switch: 1 = forward, 0 = reverse (steering wheel)
     bool forward_selected = ((msg.buf[0] >> 3) & 1) != 0;
     forwardAndReverse = forward_selected ? FORWARD_VALUE : REVERSE_VALUE;
+    cruise_main = ((msg.buf[0] >> 5) & 1) != 0;
+    cruise_inc = ((msg.buf[0] >> 6) & 1) != 0;
+    cruise_dec = ((msg.buf[0] >> 7) & 1) != 0;
     break;
   }
 
@@ -74,6 +82,8 @@ void CANPDC::readHandler(CAN_message_t msg) {
 }
 
 void CANPDC::sendPDCData() {
+  static uint32_t last_cruise_status_update_version = 0;
+
   this->sendMessage(0x200, (void *)&acc_out, sizeof(float));
   this->sendMessage(0x201, (void *)&regen_brake, sizeof(float));
   this->sendMessage(0x202, (void *)&lv_12V_telem, sizeof(float));
@@ -83,6 +93,26 @@ void CANPDC::sendPDCData() {
   this->sendMessage(0x206, (void *)&brake_pressure_telem, sizeof(float));
   this->sendMessage(0x207, (void *)&digital_data, sizeof(digital_data));
   this->sendMessage(0x208, (void *)&mph, sizeof(float));
+
+  // The state-machine timer records cruise state and target changes; transmit
+  // from the main loop so CAN I/O is never performed from the timer interrupt.
+  if (cruise_status_update_version != last_cruise_status_update_version) {
+    uint32_t cruise_status_version;
+    uint8_t cruise_status[1 + sizeof(float)];
+
+    // Snapshot all values together; the timer may update them asynchronously.
+    noInterrupts();
+    cruise_status_version = cruise_status_update_version;
+    cruise_status[0] = pdcState == PDCStates::CRUISE ? 1U : 0U;
+    const float cruise_target = cruise_target_mph;
+    memcpy(&cruise_status[1], &cruise_target, sizeof(cruise_target));
+    interrupts();
+
+    if (this->sendMessage(CRUISE_STATUS_OUTPUT_ID, cruise_status,
+                          sizeof(cruise_status))) {
+      last_cruise_status_update_version = cruise_status_version;
+    }
+  }
   // 0x209/0x302 are INPUTs received from the pedal/test board — do not
   // re-broadcast.
 }
