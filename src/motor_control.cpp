@@ -18,6 +18,7 @@ static bool previous_cruise_dec = false;
 static bool cruise_brake_cancelled = false;
 
 static constexpr float MAX_CRUISE_MPH = 45.0f;
+static constexpr float MIN_CRUISE_SPEED_MPH = 3.0f;
 static constexpr float CRUISE_DISENGAGE_INPUT_THRESHOLD = 0.01f;
 static PID cruise_pid(SPEED_P_PARAM, SPEED_I_PARAM, SPEED_D_PARAM,
             PID_UPDATE_INTERVAL);
@@ -25,8 +26,8 @@ static PID cruise_pid(SPEED_P_PARAM, SPEED_I_PARAM, SPEED_D_PARAM,
 STM32TimerInterrupt state_updater(TIM2);
 
 static float clampCruiseTarget(float target_mph) {
-  if (target_mph < MIN_MOVING_SPEED) {
-    return MIN_MOVING_SPEED;
+  if (target_mph < MIN_CRUISE_SPEED_MPH) {
+    return MIN_CRUISE_SPEED_MPH;
   }
   if (target_mph > MAX_CRUISE_MPH) {
     return MAX_CRUISE_MPH;
@@ -109,7 +110,7 @@ void transition() {
     writeAccOut(acc_in);
     writeRegenBrake(regen_in);
 
-    if (cruise_main && !cruise_brake_cancelled && !brake_pressed &&
+    if (cruise_main && !cruise_brake_cancelled && !brake_pressed && mph >= MIN_CRUISE_SPEED_MPH &&
         acc_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD &&
         regen_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD) {
       cruise_target_mph = clampCruiseTarget(mph);
@@ -120,9 +121,9 @@ void transition() {
     break;
 
   case PDCStates::CRUISE:
-    if (rpm < MIN_MOVING_SPEED) {
+    if (mph < MIN_CRUISE_SPEED_MPH) {
       cruise_pid.setMode(MANUAL_MODE);
-      pdcState = PDCStates::IDLE;
+      pdcState = (rpm < MIN_MOVING_SPEED) ? PDCStates::IDLE : PDCStates::FORWARD;
       writeAccOut(0.0);
       writeRegenBrake(0.0);
       break;
