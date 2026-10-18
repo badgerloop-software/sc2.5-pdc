@@ -45,9 +45,9 @@ void CANPDC::readHandler(CAN_message_t msg) {
     //   bit 0: headlight, bit 1: left_blink, bit 2: right_blink,
     //   bit 3: direction_switch, bit 4: horn, bit 5: cruise main,
     //   bit 6: cruise increase, bit 7: cruise decrease
-    // bit 3 direction_switch: 1 = forward, 0 = reverse (steering wheel)
-    bool forward_selected = ((msg.buf[0] >> 3) & 1) != 0;
-    forwardAndReverse = forward_selected ? FORWARD_VALUE : REVERSE_VALUE;
+    // Bit 3 direction_switch: 0 = forward, 1 = reverse on both boards
+    bool reverse_selected = ((msg.buf[0] >> 3) & 1) != 0;
+    forwardAndReverse = reverse_selected ? REVERSE_VALUE : FORWARD_VALUE;
     cruise_main = ((msg.buf[0] >> 5) & 1) != 0;
     cruise_inc = ((msg.buf[0] >> 6) & 1) != 0;
     cruise_dec = ((msg.buf[0] >> 7) & 1) != 0;
