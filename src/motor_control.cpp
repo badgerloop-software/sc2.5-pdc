@@ -10,13 +10,6 @@ volatile uint32_t cruise_status_update_version = 0;
 volatile bool cruise_inc_pending = false;
 volatile bool cruise_dec_pending = false;
 
-static bool previous_cruise_inc = false;
-static bool previous_cruise_dec = false;
-// A brake cancellation must be explicitly re-armed by switching cruise-main
-// off.  This prevents a held cruise-main signal from re-engaging cruise as
-// soon as the brake pedal is released.
-static bool cruise_brake_cancelled = false;
-
 static constexpr float MAX_CRUISE_MPH = 45.0f;
 static constexpr float MIN_CRUISE_SPEED_MPH = 3.0f;
 static constexpr float CRUISE_DISENGAGE_INPUT_THRESHOLD = 0.01f;
@@ -51,16 +44,9 @@ PDCStates get_state() { return pdcState; }
 void transition() {
   const PDCStates state_before_transition = pdcState;
   const float cruise_target_before_transition = cruise_target_mph;
-  const bool cruise_inc_rising = cruise_inc && !previous_cruise_inc;
-  const bool cruise_dec_rising = cruise_dec && !previous_cruise_dec;
-  previous_cruise_inc = cruise_inc;
-  previous_cruise_dec = cruise_dec;
-
-  if (pdcState == PDCStates::CRUISE && brake_pressed) {
-    cruise_brake_cancelled = true;
-  }
-  if (!cruise_main) {
-    cruise_brake_cancelled = false;
+  if (pdcState == PDCStates::CRUISE &&
+      (brake_pressed || regen_button_pressed || regen_in > CRUISE_DISENGAGE_INPUT_THRESHOLD)) {
+    cruise_rearm_required = true;
   }
 
   switch (pdcState) {
@@ -110,7 +96,8 @@ void transition() {
     writeAccOut(acc_in);
     writeRegenBrake(regen_in);
 
-    if (cruise_main && !cruise_brake_cancelled && !brake_pressed && mph >= MIN_CRUISE_SPEED_MPH &&
+    if (cruise_main && !cruise_rearm_required && !brake_pressed &&
+        !regen_button_pressed && forwardAndReverse == FORWARD_VALUE && mph >= MIN_CRUISE_SPEED_MPH &&
         regen_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD) {
       cruise_target_mph = clampCruiseTarget(mph);
       cruise_pid.setSetPoint(cruise_target_mph);
@@ -127,7 +114,7 @@ void transition() {
       writeRegenBrake(0.0);
       break;
     }
-    if (!cruise_main || brake_pressed ||
+    if (!cruise_main || cruise_rearm_required || brake_pressed || regen_button_pressed ||
       regen_in > CRUISE_DISENGAGE_INPUT_THRESHOLD ||
       forwardAndReverse != FORWARD_VALUE) {
       cruise_pid.setMode(MANUAL_MODE);
@@ -170,11 +157,7 @@ void transition() {
     ++cruise_status_update_version;
   }
 
-  if ((pdcState == PDCStates::FORWARD || pdcState == PDCStates::CRUISE) &&
-      cruise_main) {
-    cruise_inc_pending = cruise_inc_pending || cruise_inc_rising;
-    cruise_dec_pending = cruise_dec_pending || cruise_dec_rising;
-  } else {
+  if (pdcState != PDCStates::CRUISE) {
     cruise_inc_pending = false;
     cruise_dec_pending = false;
   }
