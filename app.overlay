@@ -1,0 +1,5 @@
+/ {
+    zephyr,user {
+        interrupt-gpios = <&gpioa 8 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    };
+};

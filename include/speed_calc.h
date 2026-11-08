@@ -1,10 +1,8 @@
 #ifndef __SPEED_CALC_H__
 #define __SPEED_CALC_H__
 
-#include "Arduino.h"
 #include "const.h"
 #include "IOManagement.h"
-#include "STM32TimerInterrupt_Generic.h"
 
 #define SPEED_CALC_INTERVAL_US 50000 // us
 #define ARRAY_SIZE 20 
