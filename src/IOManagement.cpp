@@ -35,6 +35,8 @@ static void agentDebugLogBrakeDigital(uint32_t dig, uint32_t mode, uint32_t pupd
 // Ticker to poll input readings at fixed rate
 STM32TimerInterrupt IOTimer(TIM7);
 
+
+
 // RPM pulse counting
 // MC_SPEED_SIG fires 48 pulses per revolution.
 // readIO() runs every IO_UPDATE_PERIOD µs and computes RPM from the count.
