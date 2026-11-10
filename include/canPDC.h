@@ -21,13 +21,17 @@ public:
 };
 
 extern volatile bool forwardAndReverse;
-extern volatile bool cruise_main;
+extern volatile bool cruise_toggle_button_pressed;
 extern volatile bool cruise_inc;
 extern volatile bool cruise_dec;
 
 // 0x300 requires two bytes: existing controls, then regen button in bit 0
 extern volatile bool regen_button_pressed;
-extern volatile bool cruise_rearm_required;
+extern volatile bool cruise_cancel_pending;
+extern volatile bool cruise_toggle_pending;
+static constexpr uint32_t STEERING_CONTROL_TIMEOUT_MS = 250U;
+bool steeringControlsFresh(uint32_t current_time_ms);
+void resetCruiseMainButton();
 // Call only from the state timer or with interrupts masked
 void resetCruiseButtonEvents();
 

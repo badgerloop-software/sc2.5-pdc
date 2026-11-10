@@ -4,12 +4,26 @@
 #include <math.h>
 
 volatile bool forwardAndReverse = false;
-volatile bool cruise_main = false;
+volatile bool cruise_toggle_button_pressed = false;
 volatile bool cruise_inc = false;
 volatile bool cruise_dec = false;
 
 volatile bool regen_button_pressed = false;
-volatile bool cruise_rearm_required = true;
+volatile bool cruise_cancel_pending = false;
+volatile bool cruise_toggle_pending = false;
+static bool cruise_toggle_button_armed = false;
+static volatile bool steering_controls_received = false;
+static volatile uint32_t last_steering_control_ms = 0;
+
+bool steeringControlsFresh(uint32_t current_time_ms) {
+  return steering_controls_received &&
+      uint32_t(current_time_ms - last_steering_control_ms) < STEERING_CONTROL_TIMEOUT_MS;
+}
+
+void resetCruiseMainButton() {
+  cruise_toggle_button_armed = false;
+  cruise_toggle_pending = false;
+}
 static bool increase_button_armed = false;
 static bool decrease_button_armed = false;
 
@@ -41,29 +55,53 @@ void CANPDC::readHandler(CAN_message_t msg) {
   switch (msg.id) {
   case FORWARD_AND_REVERSE_ID: { // 0x300
     if (msg.len < 2) break;
+    const uint32_t current_time_ms = millis();
+    if (!steeringControlsFresh(current_time_ms)) {
+      resetCruiseMainButton();
+      resetCruiseButtonEvents();
+      if (pdcState == PDCStates::CRUISE) cruise_cancel_pending = true;
+    }
+    last_steering_control_ms = current_time_ms;
+    steering_controls_received = true;
     // Byte 0 bit layout per CAN spec:
     //   bit 0: headlight, bit 1: left_blink, bit 2: right_blink,
-    //   bit 3: direction_switch, bit 4: horn, bit 5: cruise main,
+    //   bit 3: direction_switch, bit 4: horn, bit 5: cruise main button pressed,
     //   bit 6: cruise increase, bit 7: cruise decrease
     // Bit 3 direction_switch: 0 = forward, 1 = reverse on both boards
     bool reverse_selected = ((msg.buf[0] >> 3) & 1) != 0;
     forwardAndReverse = reverse_selected ? REVERSE_VALUE : FORWARD_VALUE;
-    cruise_main = ((msg.buf[0] >> 5) & 1) != 0;
+    cruise_toggle_button_pressed = ((msg.buf[0] >> 5) & 1) != 0;
     cruise_inc = ((msg.buf[0] >> 6) & 1) != 0;
     cruise_dec = ((msg.buf[0] >> 7) & 1) != 0;
     regen_button_pressed = (msg.buf[1] & 1U) != 0;
-    if (!cruise_main) {
-      cruise_rearm_required = false;
+    // Capture one press, never queue an engagement until driving conditions improve
+    const bool driving_forward =
+        pdcState == PDCStates::FORWARD && forwardAndReverse == FORWARD_VALUE;
+    const bool brakes_released =
+        !brake_pressed && !digital_data.park_brake;
+    const bool regen_allows_cruise =
+        !regen_button_pressed && regen_in <= CRUISE_DISENGAGE_INPUT_THRESHOLD;
+    const bool speed_allows_cruise =
+        mph >= MIN_CRUISE_SPEED_MPH && rpm >= MIN_MOVING_SPEED;
+
+    const bool can_engage_cruise =
+        driving_forward && brakes_released && regen_allows_cruise && speed_allows_cruise;
+    if (cruise_toggle_button_pressed && cruise_toggle_button_armed &&
+        (pdcState == PDCStates::CRUISE || can_engage_cruise)) {
+      cruise_toggle_pending = true;
     }
+    cruise_toggle_button_armed = !cruise_toggle_button_pressed;
     if (pdcState == PDCStates::CRUISE && regen_button_pressed) {
-      cruise_rearm_required = true;
+      cruise_cancel_pending = true;
     }
     if (cruise_inc && cruise_dec) {
       resetCruiseButtonEvents();
       break;
     }
-    const bool accept_adjustment = pdcState == PDCStates::CRUISE &&
-        cruise_main && !cruise_rearm_required && !regen_button_pressed;
+    const bool cruise_is_active = pdcState == PDCStates::CRUISE;
+    const bool cruise_can_continue = !cruise_cancel_pending && !regen_button_pressed;
+
+    const bool accept_adjustment = cruise_is_active && cruise_can_continue;
     if (cruise_inc && increase_button_armed && accept_adjustment) cruise_inc_pending = true;
     if (cruise_dec && decrease_button_armed && accept_adjustment) cruise_dec_pending = true;
     increase_button_armed = !cruise_inc;
@@ -85,8 +123,8 @@ void CANPDC::readHandler(CAN_message_t msg) {
       else if (regen_val > 1.0f)
         regen_val = 1.0f;
       regen_in = regen_val;
-      if (pdcState == PDCStates::CRUISE && regen_val > 0.01f) {
-        cruise_rearm_required = true;
+      if (pdcState == PDCStates::CRUISE && regen_val > CRUISE_DISENGAGE_INPUT_THRESHOLD) {
+        cruise_cancel_pending = true;
       }
     }
     break;

@@ -7,6 +7,9 @@
 #include "STM32TimerInterrupt_Generic.h"
 #include "canPDC.h"
 
+static constexpr float MIN_CRUISE_SPEED_MPH = 3.0f;
+static constexpr float CRUISE_DISENGAGE_INPUT_THRESHOLD = 0.01f;
+
 void initPDCState();
 void transition();
 PDCStates get_state();
