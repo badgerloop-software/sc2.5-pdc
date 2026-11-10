@@ -1,5 +1,7 @@
 #include "canPDC.h"
 #include "const.h"
+#include <zephyr/kernel.h>
+#include <zephyr/devicetree/gpio.h>
 
 volatile bool forwardAndReverse = false;
 

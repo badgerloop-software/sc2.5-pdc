@@ -1,9 +1,15 @@
 #include "speed_calc.h"
 #include "IOManagement.h"
+#include <zephyr/kernel.h>
+#include <zephyr/devicetree/gpio.h>
 
+#define MCU_DIR_PIN DT_PATH(mcu_dir)
+K_TIMER_DEFINE(IOTimer, calculateSpeed, NULL);
 
-define MOTOR_PIN_INTERUPT DT_PATH(zephyr_user)
-static const struct gpio_dt_spec intr_pin = GPIO_DT_SPEC_GET(MOTOR_PIN_INTERUPT, interrupt_gpios);
+#define MOTOR_PIN_INTERUPT DT_PATH(zephyr_user)
+static const struct gpio_dt_spec motor_speed_pin = GPIO_DT_SPEC_GET(MOTOR_PIN_INTERUPT, 
+                                                                    interrupt_gpios);
+
 
 volatile uint8_t speedPulses = 0;
 static volatile uint8_t previousPulses[ARRAY_SIZE];

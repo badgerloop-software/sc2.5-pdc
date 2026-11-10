@@ -1,6 +1,39 @@
 #include "IOManagement.h"
+#include <zephyr/kernel.h>
+#include <zephyr/devicetree/gpio.h>
+#include <zephyr/logging/log.h> 
+
+#define MOTOR_SPEED_NODE DT_PATH(motor_speed)
+#define MCU_DIR_NODE     DT_PATH(mcu_dir)
+#define MCU_ECO_NODE     DT_PATH(mcu_eco)
+#define MCU_MC_ON_NODE   DT_PATH(mcu_mc_on)
+#define PRK_TELEM_NODE   DT_PATH(prk_telem)
+#define BRK_TELEM_NODE   DT_PATH(brk_telem)
 
 volatile Digital_Data digital_data;
+LOG_MODULE_REGISTER(my_app_module, LOG_LEVEL_DBG);
+ // Callback for speed signal interrupt
+static struct gpio_callback mcu_speed_sig_cb; 
+
+static const struct gpio_dt_spec motor_speed =
+    GPIO_DT_SPEC_GET(MOTOR_SPEED_NODE, interrupt_gpios);
+
+static const struct gpio_dt_spec mcu_dir =
+    GPIO_DT_SPEC_GET(MCU_DIR_NODE, interrupt_gpios);
+
+static const struct gpio_dt_spec mcu_eco =
+    GPIO_DT_SPEC_GET(MCU_ECO_NODE, interrupt_gpios);
+
+static const struct gpio_dt_spec mcu_mc_on =
+    GPIO_DT_SPEC_GET(MCU_MC_ON_NODE, interrupt_gpios);
+
+static const struct gpio_dt_spec prk_telem =
+    GPIO_DT_SPEC_GET(PRK_TELEM_NODE, interrupt_gpios);
+
+static const struct gpio_dt_spec brk_telem =
+    GPIO_DT_SPEC_GET(BRK_TELEM_NODE, interrupt_gpios);
+K_TIMER_DEFINE(IOTimer, calculateSpeed, NULL);
+
 
 volatile uint16_t acc_in_raw = 0;
 volatile float acc_in = 0;
@@ -20,20 +53,32 @@ volatile float rpm = 0;
 static void agentDebugLogBrakeDigital(uint32_t dig, uint32_t mode, uint32_t pupd,
                                       uint32_t idr) {
   // #region agent log
-  Serial.printf(
+
+
+  LOG_DBG(
       "{\"sessionId\":\"03e5a9\",\"runId\":\"digital-pd\",\"hypothesisId\":\"H\","
       "\"location\":\"IOManagement.cpp:readIO\",\"message\":\"brake_digital\","
       "\"data\":{\"brakeDigital\":%lu,\"pa0GpioMode\":%lu,\"pa0Pupd\":%lu,"
       "\"pa0Idr\":%lu,\"brakePressed\":%u,\"brakeTelem\":%.3f},"
       "\"timestamp\":%lu}\n",
       dig, mode, pupd, idr, (unsigned)brake_pressed, brake_pressure_telem,
-      millis());
+      k_uptime_get());
+
+  // Serial.printf(
+  //     "{\"sessionId\":\"03e5a9\",\"runId\":\"digital-pd\",\"hypothesisId\":\"H\","
+  //     "\"location\":\"IOManagement.cpp:readIO\",\"message\":\"brake_digital\","
+  //     "\"data\":{\"brakeDigital\":%lu,\"pa0GpioMode\":%lu,\"pa0Pupd\":%lu,"
+  //     "\"pa0Idr\":%lu,\"brakePressed\":%u,\"brakeTelem\":%.3f},"
+  //     "\"timestamp\":%lu}\n",
+  //   dig, mode, pupd, idr, (unsigned)brake_pressed, brake_pressure_telem,
+  //    millis());
   // #endregion
 }
 #endif
 
 // Ticker to poll input readings at fixed rate
-STM32TimerInterrupt IOTimer(TIM7);
+//STM32TimerInterrupt IOTimer(TIM7);
+
 
 
 
@@ -50,8 +95,13 @@ static uint8_t brake_stable_count = 0;
 static void speedPulseISR() { pulseCount++; }
 
 void initSpeedCounter() {
-  attachInterrupt(digitalPinToInterrupt(MCU_SPEED_SIG), speedPulseISR, RISING);
-}
+  // attachInterrupt(digitalPinToInterrupt(MCU_SPEED_SIG), speedPulseISR, RISING);
+  gpio_pin_configure_dt(&mcu_speed, GPIO_INPUT);
+  gpio_init_callback(&mcu_speed_sig_cb, speedPulseISR, BIT(mcu_speed.pin));
+  gpio_add_callback(&mcu_speed, BIT(mcu_speed.pin));
+  gpio_pin_interrupt_configure_dt(&mcu_speed, GPIO_INT_EDGE_RISING);
+
+} 
 
 DAC_HandleTypeDef hdac;
 
@@ -81,20 +131,24 @@ void initDAC() {
 }
 
 void initIO() {
-  pinMode(MCU_DIR, OUTPUT);
-  set_direction(FORWARD_VALUE);
-  pinMode(MCU_ECO, OUTPUT);
-  pinMode(MCU_MC_ON, INPUT);
-  pinMode(MCU_SPEED_SIG, INPUT);
-  pinMode(PRK_BRK_TELEM, INPUT);
-  // PCB missing external pulldown; use MCU internal pulldown on PA0.
-  pinMode(BRAKE_TELEM, INPUT_PULLDOWN);
+
+  gpio_pin_configure_dt(&mcu_dir, GPIO_OUTPUT);
+  gpio_pin_set_dt(&mcu_dir, FORWARD_VALUE);
+
+  gpio_pin_configure_dt(&mcu_eco, GPIO_OUTPUT);
+  gpio_pin_configure_dt(&mcu_mc_on, GPIO_INPUT);
+  gpio_pin_configure_dt(&motor_speed, GPIO_INPUT);
+  gpio_pin_configure_dt(&prk_telem, GPIO_INPUT);
+  gpio_pin_configure_dt(&brk_telem, GPIO_INPUT | GPIO_PULL_DOWN);
 
   initDAC();
   initADC(ADC1);
   initSpeedCounter();
 
-  if (IOTimer.attachInterruptInterval(IO_UPDATE_PERIOD, readIO)) {
+
+  k_timer_start(&IOTimer, K_USEC(IO_UPDATE_PERIOD), K_USEC(IO_UPDATE_PERIOD));
+
+  if (k_timer_remaining_get(&IOTimer) > 0) {
 #ifdef DEBUG_PRINTS
     printf("starting IO timer\n");
 #endif

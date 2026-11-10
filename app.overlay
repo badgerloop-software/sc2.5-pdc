@@ -1,5 +1,25 @@
 / {
-    zephyr,user {
+    motor_speed {
         interrupt-gpios = <&gpioa 8 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
     };
+    mcu_dir {
+        interrupt-gpios = <&gpib 7 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    };
+    
+    mcu_eco {
+        interrupt-gpios = <&gpib 1 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    };
+    
+    mcu_mc_on {
+        interrupt-gpios = <&gpia 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    };
+
+    prk_telem {
+        interrupt-gpios = <&gpib 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    };
+
+    brk_telem{
+        interrupt-gpios = <&gpia 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+
+    }'
 };
