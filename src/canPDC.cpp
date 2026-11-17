@@ -208,4 +208,8 @@ void CANPDC::sendPDCData() {
   }
   // 0x209/0x302 are INPUTs received from the pedal/test board — do not
   // re-broadcast.
+
+  // Send board on signal for debugging
+  uint8_t pdc_on = 1;
+  this->sendMessage(0x299, (void*)&pdc_on, sizeof(uint8_t));
 }
