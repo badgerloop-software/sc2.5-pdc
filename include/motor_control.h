@@ -7,8 +7,17 @@
 #include "STM32TimerInterrupt_Generic.h"
 #include "canPDC.h"
 
+static constexpr float MIN_CRUISE_SPEED_MPH = 3.0f;
+static constexpr float CRUISE_DISENGAGE_INPUT_THRESHOLD = 0.01f;
+
 void initPDCState();
 void transition();
 PDCStates get_state();
+
+extern volatile float cruise_target_mph;
+// Incremented by the state-machine interrupt when cruise state or target changes.
+extern volatile uint32_t cruise_status_update_version;
+extern volatile bool cruise_inc_pending;
+extern volatile bool cruise_dec_pending;
 
 #endif

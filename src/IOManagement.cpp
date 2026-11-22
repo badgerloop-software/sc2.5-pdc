@@ -123,23 +123,26 @@ void readIO() {
   lv_5V_current = readADC(ADC_CHANNEL_15) * INA180_CURRENT_MULTIPLIER;   // PB_0
   current_in_telem = readADC(ADC_CHANNEL_8) * INA180_CURRENT_MULTIPLIER; // PA_3
 #ifndef TEST_MODE
-  // Digital brake switch: HIGH = pressed. Internal pulldown holds idle at 0.
-  // Sample-and-delay: require N stable samples before updating brake_pressed.
-  {
-    bool raw = digitalRead(BRAKE_TELEM) == HIGH;
-    if (raw != brake_last_raw) {
-      brake_stable_count = 0;
-      brake_last_raw = raw;
-    } else if (raw != brake_pressed) {
-      uint8_t need = raw ? BRAKE_DEBOUNCE_PRESS_SAMPLES
-                         : BRAKE_DEBOUNCE_RELEASE_SAMPLES;
-      if (++brake_stable_count >= need) {
-        brake_pressed = raw;
-        brake_stable_count = 0;
-      }
-    }
-  }
-  brake_pressure_telem = brake_pressed ? 3.3f : 0.0f;
+  // TODO: Restore brake input reading when the brake switch is connected
+  brake_pressed = false;
+  brake_pressure_telem = 0.0f;
+  // // Digital brake switch: HIGH = pressed. Internal pulldown holds idle at 0.
+  // // Sample-and-delay: require N stable samples before updating brake_pressed.
+  // {
+  //   bool raw = digitalRead(BRAKE_TELEM) == HIGH;
+  //   if (raw != brake_last_raw) {
+  //     brake_stable_count = 0;
+  //     brake_last_raw = raw;
+  //   } else if (raw != brake_pressed) {
+  //     uint8_t need = raw ? BRAKE_DEBOUNCE_PRESS_SAMPLES
+  //                        : BRAKE_DEBOUNCE_RELEASE_SAMPLES;
+  //     if (++brake_stable_count >= need) {
+  //       brake_pressed = raw;
+  //       brake_stable_count = 0;
+  //     }
+  //   }
+  // }
+  // brake_pressure_telem = brake_pressed ? 3.3f : 0.0f;
   digital_data.brake_led =
       brake_pressed || (regen_in >= REGEN_BRAKE_LIGHT_THRESHOLD);
 

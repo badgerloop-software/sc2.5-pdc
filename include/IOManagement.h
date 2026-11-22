@@ -2,7 +2,7 @@
 #define __IO_MANAGER_H__
 
 #include <Arduino.h>
-#include "PID.h"
+#include "pid.h"
 #include "STM32TimerInterrupt_Generic.h"
 #include "adc.h"
 #include "const.h"

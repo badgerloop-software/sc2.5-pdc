@@ -32,6 +32,8 @@ static const char *pdcStateToString(PDCStates state) {
     return "FORWARD";
   case PDCStates::REVERSE:
     return "REVERSE";
+  case PDCStates::CRUISE:
+    return "CRUISE";
   default:
     return "UNKNOWN";
   }
