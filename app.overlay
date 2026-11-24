@@ -1,25 +1,38 @@
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/adc/adc.h>
+
 / {
     motor_speed {
         interrupt-gpios = <&gpioa 8 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
     };
+
     mcu_dir {
-        interrupt-gpios = <&gpib 7 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+        interrupt-gpios = <&gpiob 7 GPIO_ACTIVE_HIGH>;
     };
-    
+
     mcu_eco {
-        interrupt-gpios = <&gpib 1 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+        interrupt-gpios = <&gpiob 1 GPIO_ACTIVE_HIGH>;
     };
-    
+
     mcu_mc_on {
-        interrupt-gpios = <&gpia 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+        interrupt-gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>;
     };
 
     prk_telem {
-        interrupt-gpios = <&gpib 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+        interrupt-gpios = <&gpiob 4 GPIO_ACTIVE_HIGH>;
+    };
+    brk_telem {
+        interrupt-gpios = <&gpioa 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    };
+    
+    &adc {
+        status = "disabled";
     };
 
-    brk_telem{
-        interrupt-gpios = <&gpia 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+    &dac1 {
+    status = "disabled";
+    };
 
-    }'
+
 };
+

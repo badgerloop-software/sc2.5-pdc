@@ -2,6 +2,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/devicetree/gpio.h>
 #include <zephyr/logging/log.h> 
+#include <adc.h>
 
 #define MOTOR_SPEED_NODE DT_PATH(motor_speed)
 #define MCU_DIR_NODE     DT_PATH(mcu_dir)
@@ -9,10 +10,13 @@
 #define MCU_MC_ON_NODE   DT_PATH(mcu_mc_on)
 #define PRK_TELEM_NODE   DT_PATH(prk_telem)
 #define BRK_TELEM_NODE   DT_PATH(brk_telem)
+#define ADC_NODE         DT_PATH(motor_adc)
+
+//logs or macrs here
+K_TIMER_DEFINE(IOTimer, calculateSpeed, NULL);
+LOG_MODULE_REGISTER(my_app_module, LOG_LEVEL_DBG);
 
 volatile Digital_Data digital_data;
-LOG_MODULE_REGISTER(my_app_module, LOG_LEVEL_DBG);
- // Callback for speed signal interrupt
 static struct gpio_callback mcu_speed_sig_cb; 
 
 static const struct gpio_dt_spec motor_speed =
@@ -32,8 +36,10 @@ static const struct gpio_dt_spec prk_telem =
 
 static const struct gpio_dt_spec brk_telem =
     GPIO_DT_SPEC_GET(BRK_TELEM_NODE, interrupt_gpios);
-K_TIMER_DEFINE(IOTimer, calculateSpeed, NULL);
 
+
+static const struct adc_dt_spec adc_channel =
+    ADC_DT_SPEC_GET_BY_IDX(ADC_NODE, 0);
 
 volatile uint16_t acc_in_raw = 0;
 volatile float acc_in = 0;
@@ -77,10 +83,6 @@ static void agentDebugLogBrakeDigital(uint32_t dig, uint32_t mode, uint32_t pupd
 #endif
 
 // Ticker to poll input readings at fixed rate
-//STM32TimerInterrupt IOTimer(TIM7);
-
-
-
 
 // RPM pulse counting
 // MC_SPEED_SIG fires 48 pulses per revolution.
@@ -104,6 +106,7 @@ void initSpeedCounter() {
 } 
 
 DAC_HandleTypeDef hdac;
+
 
 void initDAC() {
     __HAL_RCC_DAC1_CLK_ENABLE();
@@ -150,11 +153,11 @@ void initIO() {
 
   if (k_timer_remaining_get(&IOTimer) > 0) {
 #ifdef DEBUG_PRINTS
-    printf("starting IO timer\n");
+    LOG_DBG("starting IO timer\n");
 #endif
   } else {
 #ifdef DEBUG_PRINTS
-    printf("problem starting IO timer\n");
+    LOG_DBG("problem starting IO timer\n");
 #endif
   }
 }
@@ -167,7 +170,7 @@ void readIO() {
   float interval_min = IO_UPDATE_PERIOD / 60000000.0f; // µs to minutes
   // rpm = (float)count / PULSES_PER_REV / interval_min;
 
-  digital_data.mc_speed_sig = digitalRead(MCU_SPEED_SIG);
+  digital_data.mc_speed_sig = gpio_pin_get_dt(&motor_speed);
 
 #ifndef TEST_MODE
   digital_data.park_brake = false; // digitalRead(PRK_BRK_TELEM);
@@ -217,12 +220,12 @@ void readIO() {
 }
 
 void set_direction(bool dir) {
-  digitalWrite(MCU_DIR, dir);
+  gpio_pin_set(&mcu_dir, dir);
   digital_data.direction = dir;
 }
 
 void set_eco_mode(bool eco) {
-  digitalWrite(MCU_ECO, eco);
+  gpio_pin_set(&mcu_eco, eco);
   digital_data.eco_mode = eco;
 }
 
