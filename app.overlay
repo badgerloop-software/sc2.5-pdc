@@ -24,15 +24,6 @@
     brk_telem {
         interrupt-gpios = <&gpioa 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
     };
-    
-    &adc {
-        status = "disabled";
-    };
-
-    &dac1 {
-    status = "disabled";
-    };
-
 
 };
 

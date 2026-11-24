@@ -12,7 +12,7 @@ static const struct gpio_dt_spec motor_speed_pin = GPIO_DT_SPEC_GET(MOTOR_PIN_IN
 
 
 volatile uint8_t speedPulses = 0;
-static volatile uint8_t previousPulses[ARRAY_SIZE];
+static volatile uint8_t previousPulses[PULSES_ARRAY_SIZE];
 
 static struct gpio_callback mcu_speed_sig_cb; 
 
@@ -32,7 +32,7 @@ void calculateSpeed(){
     static uint16_t runningSum = 0; 
 
     // Replaces oldest pulse in pulse counter array with a new one
-    calculationCounter = (calculationCounter + 1) % ARRAY_SIZE;
+    calculationCounter = (calculationCounter + 1) % PULSES_ARRAY_SIZE;
     runningSum = runningSum - previousPulses[calculationCounter] + speedPulses;
     previousPulses[calculationCounter] = speedPulses;
     speedPulses = 0;
@@ -41,7 +41,7 @@ void calculateSpeed(){
 // do not use in ISR context, as it uses floating point 
 void calculateMph(uint16_t runningSum, float &rpm, float &mph) {
    float revolutions = runningSum / (float)PULSES_PER_REV;
-    rpm = revolutions / (ARRAY_SIZE * SPEED_CALC_INTERVAL_US / 1000000.0 / 60.0 );
+    rpm = revolutions / (PULSES_ARRAY_SIZE * SPEED_CALC_INTERVAL_US / 1000000.0 / 60.0 );
     mph = rpm * WHEEL_CIRCUMFERENCE * 0.00094696;
 
 }

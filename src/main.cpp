@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 #include "IOManagement.h"
 #include "adc.h"
 #include "canPDC.h"

@@ -8,6 +8,8 @@ list(
             ${CMAKE_CURRENT_SOURCE_DIR}/embedded-pio/coordinator/coordinator.conf
             ${CMAKE_CURRENT_SOURCE_DIR}/embedded-pio/adc/adc.conf
             ${CMAKE_CURRENT_SOURCE_DIR}/embedded-pio/dac/dac.conf
+            ${CMAKE_CURRENT_SOURCE_DIR}/embedded-pio/PID/pid.conf
+
 
 
 )
@@ -16,8 +18,9 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(PDC LANGUAGES C CXX)
 
 target_include_directories(app 
-    PRIVATE 
+        PRIVATE 
         include
+        inc
 )
 
 
@@ -32,7 +35,8 @@ target_sources(app PRIVATE
     inc/speed_calc.h
     inc/IOManagement.h
     inc/const.h
-    inc/motor_control.h)
+    inc/motor_control.h
+    )
 
 
 add_subdirectory(embedded-pio/zephyrcan)
@@ -40,6 +44,7 @@ add_subdirectory(embedded-pio/updatemanager_eth)
 add_subdirectory(embedded-pio/coordinator)
 add_subdirectory(embedded-pio/adc)
 add_subdirectory(embedded-pio/dac)
+add_subdirectory(embedded-pio/PID)
 
 target_link_libraries(app
       PRIVATE
@@ -48,6 +53,7 @@ target_link_libraries(app
           coordinator
           adc
           dac
+          pid
   )
 
 
