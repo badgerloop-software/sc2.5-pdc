@@ -68,7 +68,7 @@ static void agentDebugLogBrakeDigital(uint32_t dig, uint32_t mode, uint32_t pupd
       "\"pa0Idr\":%lu,\"brakePressed\":%u,\"brakeTelem\":%.3f},"
       "\"timestamp\":%lu}\n",
       dig, mode, pupd, idr, (unsigned)brake_pressed, brake_pressure_telem,
-      k_uptime_get());
+      k_uptime_get_32());
 
   // Serial.printf(
   //     "{\"sessionId\":\"03e5a9\",\"runId\":\"digital-pd\",\"hypothesisId\":\"H\","
@@ -185,7 +185,7 @@ void readIO() {
   // Digital brake switch: HIGH = pressed. Internal pulldown holds idle at 0.
   // Sample-and-delay: require N stable samples before updating brake_pressed.
   {
-    bool raw = digitalRead(BRAKE_TELEM) == HIGH;
+    bool raw = gpio_pin_get_dt(&brk_telem) == HIGH;
     if (raw != brake_last_raw) {
       brake_stable_count = 0;
       brake_last_raw = raw;
@@ -205,10 +205,10 @@ void readIO() {
 #ifdef DEBUG_PRINTS
   {
     static uint32_t lastAgentLogMs = 0;
-    uint32_t nowMs = millis();
+    uint32_t nowMs = k_uptime_get_32();
     if (nowMs - lastAgentLogMs >= 1000) {
       lastAgentLogMs = nowMs;
-      uint32_t dig = (uint32_t)digitalRead(BRAKE_TELEM);
+      uint32_t dig = (uint32_t)gpio_pin_get_dt(&brk_telem);
       uint32_t mode = (GPIOA->MODER >> 0) & 0x3U;
       uint32_t pupd = (GPIOA->PUPDR >> 0) & 0x3U; // 2 = pulldown
       uint32_t idr = (GPIOA->IDR >> 0) & 0x1U;
